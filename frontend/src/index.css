@@ -1,0 +1,86 @@
+:root {
+  --color-background-primary: #ffffff;
+  --color-background-secondary: #f5f5f3;
+  --color-background-tertiary: #f0efec;
+  --color-background-success: #eaf3de;
+  --color-background-warning: #faeeda;
+  --color-background-danger: #fcebeb;
+
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #6b6b6b;
+  --color-text-muted: #9a9a96;
+  --color-text-success: #3b6d11;
+  --color-text-warning: #854f0b;
+  --color-text-danger: #a32d2d;
+  --color-text-info: #185fa5;
+
+  --color-border-primary: #1a1a1a;
+  --color-border-secondary: #d4d4d0;
+  --color-border-tertiary: #e8e8e4;
+  --color-border-success: #c0dd97;
+  --color-border-warning: #ef9f27;
+  --color-border-danger: #f09595;
+
+  --color-bar-success: #639922;
+  --color-bar-danger: #e24b4a;
+  --color-bar-neutral: #d3d1c7;
+
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text-primary);
+  background: var(--color-background-tertiary);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+input, select, textarea {
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--color-text-primary);
+  background: var(--color-background-primary);
+  border: 0.5px solid var(--color-border-secondary);
+  border-radius: var(--border-radius-md);
+  padding: 8px 10px;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.12s;
+}
+input:focus, select:focus { border-color: var(--color-border-primary); }
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  font-size: 13px;
+  border-radius: var(--border-radius-md);
+  border: 0.5px solid var(--color-border-secondary);
+  background: transparent;
+  color: var(--color-text-primary);
+  padding: 6px 12px;
+  transition: background 0.1s, opacity 0.1s;
+}
+button:hover { background: var(--color-background-secondary); }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+button.primary {
+  background: var(--color-text-primary);
+  color: var(--color-background-primary);
+  border-color: transparent;
+}
+button.primary:hover { opacity: 0.88; background: var(--color-text-primary); }
+
+a { color: var(--color-text-info); }
+
+hr.divider {
+  border: none;
+  border-top: 0.5px solid var(--color-border-tertiary);
+  margin: 1rem 0;
+}
