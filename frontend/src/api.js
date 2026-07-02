@@ -1,4 +1,9 @@
-const BASE = '/api';
+// In development, Vite proxies /api → localhost:3001 so BASE stays '/api'.
+// In production (Vercel), VITE_API_URL is set to the live Railway backend URL
+// (e.g. https://financial-safety-backend.up.railway.app) and we call it directly.
+const BASE = import.meta.env.VITE_API_URL
+  ? import.meta.env.VITE_API_URL.replace(/\/$/, '') // strip any trailing slash
+  : '/api';
 
 function getToken() {
   return localStorage.getItem('token');
