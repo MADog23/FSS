@@ -1,6 +1,6 @@
 # Financial Safety Forecasting System
 
-A deterministic, event-driven financial safety simulator for households. Not a budgeting app — it answers one question: **"Am I financially safe, now and in the future?"** 
+A deterministic, event-driven financial safety simulator for households. Not a budgeting app — it answers one question: **"Am I financially safe, now and in the future?"**
 
 ## Architecture
 

@@ -27,7 +27,90 @@ export function AccountsPage() {
       deleteFn={api.deleteAccount}
       fields={fields}
       itemLabel={item => item.name}
+      renderItemExtra={(item, { isAdmin }) => <QuickBalanceUpdate account={item} isAdmin={isAdmin} />}
     />
+  );
+}
+
+function QuickBalanceUpdate({ account, isAdmin }) {
+  const [inputVal, setInputVal] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
+
+  const start = () => {
+    setInputVal(String(parseFloat(account.balance) || 0));
+    setEditing(true);
+    setError('');
+    setSuccess(false);
+  };
+
+  const submit = async () => {
+    const val = parseFloat(inputVal);
+    if (Number.isNaN(val)) { setError('Enter a valid number.'); return; }
+    setBusy(true);
+    setError('');
+    try {
+      await api.quickUpdateBalance(account.id, val);
+      setEditing(false);
+      setSuccess(true);
+      // Refresh the page data by reloading — CrudPage will refetch on mount
+      // A light reload approach: update the displayed balance locally
+      account.balance = val;
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!isAdmin) return null;
+
+  return (
+    <div style={{ marginTop: 8, paddingTop: 8, borderTop: '0.5px solid var(--color-border-tertiary)' }}>
+      <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 6 }}>
+        Current balance — update this whenever you check your bank
+      </div>
+
+      {editing ? (
+        <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ flex: 1, position: 'relative' }}>
+            <span style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: 'var(--color-text-muted)', pointerEvents: 'none' }}>$</span>
+            <input
+              type="number"
+              value={inputVal}
+              onChange={e => setInputVal(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && submit()}
+              autoFocus
+              placeholder="0.00"
+              style={{ paddingLeft: 20, fontSize: 14 }}
+            />
+          </div>
+          <button
+            onClick={submit}
+            disabled={busy}
+            style={{ padding: '7px 14px', background: 'var(--color-text-primary)', color: 'var(--color-background-primary)', border: 'none', fontSize: 13 }}
+          >
+            {busy ? '…' : 'Save'}
+          </button>
+          <button onClick={() => setEditing(false)} style={{ padding: '7px 10px', fontSize: 13 }}>
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 18, fontWeight: 500, letterSpacing: '-0.01em' }}>
+            ${parseFloat(account.balance).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+          </span>
+          <button onClick={start} style={{ fontSize: 12, padding: '4px 12px', color: success ? 'var(--color-text-success)' : 'var(--color-text-primary)', borderColor: success ? 'var(--color-border-success)' : 'var(--color-border-secondary)' }}>
+            {success ? '✓ Updated' : 'Update'}
+          </button>
+        </div>
+      )}
+      {error && <div style={{ fontSize: 11, color: 'var(--color-text-danger)', marginTop: 4 }}>{error}</div>}
+    </div>
   );
 }
 

@@ -158,8 +158,8 @@ export default function DashboardPage() {
         })}
       </div>
 
-      {/* ── Account cards with quick balance update ───────────────── */}
-      <AccountBalances forecast={forecast} onBalanceUpdated={refresh} />
+      {/* ── Account projection cards ─────────────────────────────── */}
+      <AccountBalances forecast={forecast} />
 
       {/* ── Balance chart toggle ──────────────────────────────────── */}
       <div style={{ background: 'var(--color-background-primary)', borderRadius: 12, border: '0.5px solid var(--color-border-tertiary)' }}>
@@ -189,39 +189,11 @@ export default function DashboardPage() {
   );
 }
 
-// ── Account balance cards with quick update ────────────────────────────────
-function AccountBalances({ forecast, onBalanceUpdated }) {
-  const [updating, setUpdating] = useState(null); // accountId being updated
-  const [inputVal, setInputVal] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [successId, setSuccessId] = useState(null);
-
+// ── Account projection cards (read-only) ──────────────────────────────────
+function AccountBalances({ forecast }) {
   const entries = Object.entries(forecast.finalBalances || {});
   if (entries.length === 0) return null;
   const spendableIds = new Set(forecast.spendableAccountIds || []);
-
-  const startUpdate = (id, currentBalance) => {
-    setUpdating(id);
-    setInputVal(String(Math.round(currentBalance)));
-  };
-
-  const submitUpdate = async (id) => {
-    const val = parseFloat(inputVal);
-    if (Number.isNaN(val)) return;
-    setBusy(true);
-    try {
-      await api.quickUpdateBalance(id, val);
-      setSuccessId(id);
-      setUpdating(null);
-      setInputVal('');
-      setTimeout(() => setSuccessId(null), 2000);
-      onBalanceUpdated();
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setBusy(false);
-    }
-  };
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 }}>
@@ -230,50 +202,21 @@ function AccountBalances({ forecast, onBalanceUpdated }) {
         const isSpendable = spendableIds.has(id);
         const pct = isNeg ? 0 : Math.min(100, (bal / (bal + 1500)) * 100);
         const barColor = isNeg ? 'var(--color-bar-danger)' : isSpendable ? 'var(--color-bar-success)' : 'var(--color-bar-neutral)';
-        const isUpdating = updating === id;
-        const didUpdate = successId === id;
 
         return (
           <div key={id} style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, padding: '12px 14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-              <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>End of {forecast.horizonDays}d</div>
+              <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Projected · {forecast.horizonDays}d</div>
               <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 8, background: isSpendable ? 'var(--color-background-success)' : 'var(--color-background-secondary)', color: isSpendable ? 'var(--color-text-success)' : 'var(--color-text-muted)', border: `0.5px solid ${isSpendable ? 'var(--color-border-success)' : 'var(--color-border-tertiary)'}` }}>
                 {isSpendable ? 'spendable' : 'set aside'}
               </span>
             </div>
-
             <div style={{ fontSize: 20, fontWeight: 500, color: isNeg ? 'var(--color-text-danger)' : 'var(--color-text-primary)', letterSpacing: '-0.01em' }}>
               {isNeg ? '-' : ''}{fmt(bal)}
             </div>
-
             <div style={{ marginTop: 8, height: 3, background: 'var(--color-background-tertiary)', borderRadius: 2, overflow: 'hidden' }}>
               <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 2, transition: 'width 0.3s ease' }} />
             </div>
-
-            {/* Quick balance update */}
-            {isUpdating ? (
-              <div style={{ display: 'flex', gap: 5, marginTop: 8 }}>
-                <input
-                  type="number"
-                  value={inputVal}
-                  onChange={e => setInputVal(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && submitUpdate(id)}
-                  autoFocus
-                  style={{ flex: 1, fontSize: 12, padding: '4px 6px' }}
-                />
-                <button onClick={() => submitUpdate(id)} disabled={busy} style={{ fontSize: 11, padding: '4px 8px', background: 'var(--color-text-primary)', color: 'var(--color-background-primary)', border: 'none' }}>
-                  {busy ? '…' : '✓'}
-                </button>
-                <button onClick={() => setUpdating(null)} style={{ fontSize: 11, padding: '4px 6px' }}>✕</button>
-              </div>
-            ) : (
-              <button
-                onClick={() => startUpdate(id, bal)}
-                style={{ marginTop: 8, width: '100%', fontSize: 11, padding: '4px', color: didUpdate ? 'var(--color-text-success)' : 'var(--color-text-muted)', borderColor: 'var(--color-border-tertiary)' }}
-              >
-                {didUpdate ? '✓ Updated' : 'Update balance'}
-              </button>
-            )}
           </div>
         );
       })}

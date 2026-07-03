@@ -32,6 +32,7 @@ export default function CrudPage({ title, fetchFn, createFn, updateFn, deleteFn,
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState({});
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -82,12 +83,17 @@ export default function CrudPage({ title, fetchFn, createFn, updateFn, deleteFn,
     resolvedFields.forEach(field => { f[field.key] = item[field.key] ?? field.default ?? ''; });
     setForm(f);
     setEditing(item.id);
+    setFormOpen(true);
     setError('');
-    // Scroll form into view on mobile
     setTimeout(() => document.getElementById('crud-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
   };
 
-  const cancel = () => { setEditing(null); setForm(blankForm()); setError(''); };
+  const cancel = () => {
+    setEditing(null);
+    setFormOpen(false);
+    setForm(blankForm());
+    setError('');
+  };
 
   const save = async () => {
     setError('');
@@ -105,7 +111,10 @@ export default function CrudPage({ title, fetchFn, createFn, updateFn, deleteFn,
         const created = await createFn(payload);
         setItems([...items, created]);
       }
-      cancel();
+      setEditing(null);
+      setFormOpen(false);
+      setForm(blankForm());
+      setError('');
     } catch (err) {
       setError(err.message);
     }
@@ -142,19 +151,28 @@ export default function CrudPage({ title, fetchFn, createFn, updateFn, deleteFn,
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
       {/* Page header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 500, margin: 0, letterSpacing: '-0.01em' }}>{title}</h2>
-        {items.length > 0 && (
-          <span style={{
-            fontSize: 11,
-            color: 'var(--color-text-muted)',
-            background: 'var(--color-background-secondary)',
-            padding: '2px 8px',
-            borderRadius: 10,
-            border: '0.5px solid var(--color-border-tertiary)',
-          }}>
-            {items.length}
-          </span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 500, margin: 0, letterSpacing: '-0.01em' }}>{title}</h2>
+          {items.length > 0 && (
+            <span style={{ fontSize: 11, color: 'var(--color-text-muted)', background: 'var(--color-background-secondary)', padding: '2px 8px', borderRadius: 10, border: '0.5px solid var(--color-border-tertiary)' }}>
+              {items.length}
+            </span>
+          )}
+        </div>
+        {isAdmin && (
+          <button
+            onClick={() => { setEditing(null); setForm(blankForm()); setError(''); setFormOpen(!formOpen); }}
+            style={{
+              fontSize: 13,
+              padding: '6px 14px',
+              background: formOpen && !editing ? 'var(--color-background-secondary)' : 'var(--color-text-primary)',
+              color: formOpen && !editing ? 'var(--color-text-primary)' : 'var(--color-background-primary)',
+              border: 'none',
+            }}
+          >
+            {formOpen && !editing ? 'Cancel' : `+ Add ${singularTitle.toLowerCase()}`}
+          </button>
         )}
       </div>
 
@@ -255,11 +273,11 @@ export default function CrudPage({ title, fetchFn, createFn, updateFn, deleteFn,
         </div>
       ))}
 
-      {/* ── Add / Edit form ─────────────────────────────────────────── */}
-      {isAdmin && (
+      {/* ── Add / Edit form — collapsed by default ──────────────────── */}
+      {isAdmin && formOpen && (
         <div id="crud-form" style={{ ...formCard, marginTop: 4 }}>
           <div style={sectionLabel}>
-            {editing ? `Editing ${singularTitle.toLowerCase()}` : `Add ${singularTitle.toLowerCase()}`}
+            {editing ? `Editing ${singularTitle.toLowerCase()}` : `New ${singularTitle.toLowerCase()}`}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -273,11 +291,9 @@ export default function CrudPage({ title, fetchFn, createFn, updateFn, deleteFn,
               >
                 {editing ? 'Save changes' : `Add ${singularTitle.toLowerCase()}`}
               </button>
-              {editing && (
-                <button onClick={cancel} style={{ padding: '9px 14px' }}>
-                  Cancel
-                </button>
-              )}
+              <button onClick={cancel} style={{ padding: '9px 14px' }}>
+                Cancel
+              </button>
             </div>
           </div>
         </div>
