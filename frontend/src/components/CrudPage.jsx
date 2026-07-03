@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../api';
 
@@ -57,8 +57,8 @@ export default function CrudPage({ title, fetchFn, createFn, updateFn, deleteFn,
     return b;
   };
 
-  useEffect(() => {
-    Promise.all([fetchFn(), api.getAccounts().catch(() => [])])
+  const refresh = useCallback(() => {
+    return Promise.all([fetchFn(), api.getAccounts().catch(() => [])])
       .then(([fetchedItems, fetchedAccounts]) => {
         setItems(fetchedItems);
         setAccounts(fetchedAccounts);
@@ -74,9 +74,12 @@ export default function CrudPage({ title, fetchFn, createFn, updateFn, deleteFn,
           });
         }
       })
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
+      .catch(e => setError(e.message));
+  }, [fetchFn]);
+
+  useEffect(() => {
+    refresh().finally(() => setLoading(false));
+  }, [refresh]);
 
   const startEdit = (item) => {
     const f = {};
@@ -105,12 +108,12 @@ export default function CrudPage({ title, fetchFn, createFn, updateFn, deleteFn,
         else payload[f.key] = form[f.key];
       });
       if (editing) {
-        const updated = await updateFn(editing, payload);
-        setItems(items.map(i => i.id === editing ? updated : i));
+        await updateFn(editing, payload);
       } else {
-        const created = await createFn(payload);
-        setItems([...items, created]);
+        await createFn(payload);
       }
+      // Refetch from server so all sub-components see fresh data immediately
+      await refresh();
       setEditing(null);
       setFormOpen(false);
       setForm(blankForm());
@@ -124,7 +127,8 @@ export default function CrudPage({ title, fetchFn, createFn, updateFn, deleteFn,
     if (!confirm('Delete this item?')) return;
     try {
       await deleteFn(id);
-      setItems(items.filter(i => i.id !== id));
+      // Refetch so list updates immediately
+      await refresh();
     } catch (err) {
       setError(err.message);
     }
