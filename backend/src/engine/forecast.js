@@ -31,8 +31,9 @@ function startOfDay(date) {
 /**
  * Expand recurring income/bill events into discrete dated entries
  * within [startDate, endDate]. paidDates (Set of 'YYYY-MM-DD') are skipped.
+ * incomeOverrides: Map of 'YYYY-MM-DD' -> override_amount for fluctuating pay.
  */
-function expandRecurring(name, amount, frequency, nextDate, accountId, type, startDate, endDate, meta = {}, paidDates = null) {
+function expandRecurring(name, amount, frequency, nextDate, accountId, type, startDate, endDate, meta = {}, paidDates = null, incomeOverrides = null) {
   const events = [];
   let d = startOfDay(new Date(nextDate));
 
@@ -40,12 +41,17 @@ function expandRecurring(name, amount, frequency, nextDate, accountId, type, sta
     const dateKey = d.toISOString().slice(0, 10);
     const isPaid = paidDates && paidDates.has(dateKey);
     if (d >= startDate && !isPaid) {
+      // Use override amount if one exists for this specific date
+      const actualAmount = (incomeOverrides && incomeOverrides.has(dateKey))
+        ? parseFloat(incomeOverrides.get(dateKey))
+        : parseFloat(amount);
       events.push({
         date: new Date(d),
         type,
         name,
-        amount: parseFloat(amount),
+        amount: actualAmount,
         accountId,
+        isOverrideAmount: !!(incomeOverrides && incomeOverrides.has(dateKey)),
         ...meta,
       });
     }
@@ -125,12 +131,21 @@ function buildEvents(data, startDate, endDate, scenarioOverlays = []) {
   const ccOverrides = data.ccOverrides || {};
 
   // Income
+  const incomeOverridesMap = data.incomeOverrides || {};
   for (const inc of data.income) {
+    const overrides = incomeOverridesMap[inc.id]
+      ? new Map(incomeOverridesMap[inc.id].map(o => [
+          new Date(o.occurrence_date).toISOString().slice(0, 10),
+          o.override_amount,
+        ]))
+      : null;
     events.push(...expandRecurring(
       inc.name, inc.amount, inc.frequency,
       inc.next_date, inc.source_account_id,
       'income', startDate, endDate,
-      { sourceId: inc.id }
+      { sourceId: inc.id },
+      null,
+      overrides
     ));
   }
 

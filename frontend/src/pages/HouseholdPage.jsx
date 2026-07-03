@@ -9,6 +9,11 @@ export default function HouseholdPage() {
   const [members, setMembers] = useState([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
 
+  // Alert prefs
+  const [alertPrefs, setAlertPrefs] = useState({ alert_email: '', alert_on_danger: true, alert_on_warning: false });
+  const [alertMsg, setAlertMsg] = useState('');
+  const [alertBusy, setAlertBusy] = useState(false);
+
   // Invite form
   const [inviteForm, setInviteForm] = useState({ email: '', password: '' });
   const [inviteMsg, setInviteMsg] = useState('');
@@ -24,7 +29,39 @@ export default function HouseholdPage() {
       .then(setMembers)
       .catch(() => {})
       .finally(() => setLoadingMembers(false));
+    api.getAlertPrefs()
+      .then(prefs => setAlertPrefs({ alert_email: prefs.alert_email || '', alert_on_danger: prefs.alert_on_danger, alert_on_warning: prefs.alert_on_warning }))
+      .catch(() => {});
   }, [isAdmin]);
+
+  const saveAlertPrefs = async (e) => {
+    e.preventDefault();
+    setAlertBusy(true);
+    setAlertMsg('');
+    try {
+      await api.saveAlertPrefs(alertPrefs);
+      setAlertMsg('Alert preferences saved.');
+      setTimeout(() => setAlertMsg(''), 3000);
+    } catch (err) {
+      setAlertMsg(err.message);
+    } finally {
+      setAlertBusy(false);
+    }
+  };
+
+  const sendTest = async () => {
+    setAlertBusy(true);
+    setAlertMsg('');
+    try {
+      await api.sendTestAlert();
+      setAlertMsg('Test alert sent — check your inbox.');
+      setTimeout(() => setAlertMsg(''), 5000);
+    } catch (err) {
+      setAlertMsg(err.message);
+    } finally {
+      setAlertBusy(false);
+    }
+  };
 
   const setMs = (id, patch) =>
     setMemberState(prev => ({ ...prev, [id]: { ...prev[id], ...patch } }));
@@ -247,7 +284,60 @@ export default function HouseholdPage() {
 
       <hr style={{ border: 'none', borderTop: '0.5px solid var(--color-border-tertiary)', margin: '1.25rem 0' }} />
 
-      {/* ── Invite new member ──────────────────────────────────────── */}
+      {/* ── Email alerts ───────────────────────────────────────── */}
+      <h3 style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>Safety alerts</h3>
+      <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 12 }}>
+        Get an email when your household forecast enters Warning or Danger status.
+        Requires RESEND_API_KEY to be set in your server environment variables.
+      </p>
+
+      <form onSubmit={saveAlertPrefs} style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 12, padding: '14px', display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
+        <div>
+          <div style={labelStyle}>Alert email address</div>
+          <input
+            type="email"
+            value={alertPrefs.alert_email}
+            onChange={e => setAlertPrefs({ ...alertPrefs, alert_email: e.target.value })}
+            placeholder="alerts@example.com"
+          />
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {[
+            { key: 'alert_on_danger', label: '🔴 Alert on Danger status' },
+            { key: 'alert_on_warning', label: '🟡 Alert on Warning status' },
+          ].map(({ key, label }) => (
+            <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13 }}>
+              <input
+                type="checkbox"
+                checked={alertPrefs[key]}
+                onChange={e => setAlertPrefs({ ...alertPrefs, [key]: e.target.checked })}
+                style={{ width: 'auto', cursor: 'pointer' }}
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+
+        {alertMsg && (
+          <div style={{ fontSize: 12, color: alertMsg.includes('saved') || alertMsg.includes('sent') ? 'var(--color-text-success)' : 'var(--color-text-danger)' }}>
+            {alertMsg}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="primary" type="submit" disabled={alertBusy} style={{ flex: 1, padding: '8px' }}>
+            {alertBusy ? 'Saving…' : 'Save alert settings'}
+          </button>
+          {alertPrefs.alert_email && (
+            <button type="button" onClick={sendTest} disabled={alertBusy} style={{ padding: '8px 12px', fontSize: 12 }}>
+              Send test
+            </button>
+          )}
+        </div>
+      </form>
+
+      <hr style={{ border: 'none', borderTop: '0.5px solid var(--color-border-tertiary)', margin: '1.25rem 0' }} />
       <h3 style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>Add a family member</h3>
       <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 12 }}>
         New members start as read-only. You can change their access level above after adding them.

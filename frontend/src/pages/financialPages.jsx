@@ -56,7 +56,83 @@ export function IncomePage() {
       deleteFn={api.deleteIncome}
       fields={fields}
       itemLabel={item => item.name}
+      renderItemExtra={(item, { isAdmin }) => <IncomeOverrides income={item} isAdmin={isAdmin} />}
     />
+  );
+}
+
+function IncomeOverrides({ income, isAdmin }) {
+  const [overrides, setOverrides] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [date, setDate] = useState(income.next_date ? new Date(income.next_date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10));
+  const [amount, setAmount] = useState('');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    api.getIncomeOverrides(income.id).then(setOverrides).catch(() => {}).finally(() => setLoading(false));
+  }, [income.id]);
+
+  const addOverride = async () => {
+    setError('');
+    const amt = parseFloat(amount);
+    if (!date || !amt || amt < 0) { setError('Enter a date and a valid amount.'); return; }
+    setBusy(true);
+    try {
+      const row = await api.setIncomeOverride(income.id, { occurrence_date: date, override_amount: amt, note: note || null });
+      setOverrides(o => [...o.filter(x => x.occurrence_date !== row.occurrence_date), row]);
+      setAmount('');
+      setNote('');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeOverride = async (overrideId) => {
+    setBusy(true);
+    try {
+      await api.deleteIncomeOverride(income.id, overrideId);
+      setOverrides(o => o.filter(x => x.id !== overrideId));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (loading) return null;
+
+  return (
+    <div style={{ marginTop: 8, paddingTop: 8, borderTop: '0.5px solid var(--color-border-tertiary)' }}>
+      <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 6 }}>
+        Adjusted paychecks {overrides.length > 0 && `(${overrides.length})`} — override the amount for a specific pay date
+      </div>
+      {overrides.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+          {overrides.map(o => (
+            <span key={o.id} style={{ fontSize: 11, background: 'var(--color-background-success)', color: 'var(--color-text-success)', padding: '3px 8px', borderRadius: 12, display: 'inline-flex', alignItems: 'center', gap: 5, border: '0.5px solid var(--color-border-success)' }}>
+              {new Date(o.occurrence_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}: ${Math.round(o.override_amount).toLocaleString()}
+              {o.note && <span style={{ opacity: 0.7 }}> · {o.note}</span>}
+              {isAdmin && <button onClick={() => removeOverride(o.id)} disabled={busy} style={{ border: 'none', background: 'none', padding: 0, fontSize: 11, cursor: 'pointer', color: 'inherit' }}>✕</button>}
+            </span>
+          ))}
+        </div>
+      )}
+      {isAdmin && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 6 }}>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ fontSize: 12, padding: '5px 8px' }} />
+            <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder={`Default: $${Math.round(income.amount).toLocaleString()}`} style={{ fontSize: 12, padding: '5px 8px' }} />
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input value={note} onChange={e => setNote(e.target.value)} placeholder="Optional note (e.g. short week)" style={{ flex: 1, fontSize: 12, padding: '5px 8px' }} />
+            <button onClick={addOverride} disabled={busy} style={{ fontSize: 12, padding: '5px 10px', whiteSpace: 'nowrap' }}>Set amount</button>
+          </div>
+          {error && <div style={{ fontSize: 11, color: 'var(--color-text-danger)', marginTop: 4 }}>{error}</div>}
+        </>
+      )}
+    </div>
   );
 }
 

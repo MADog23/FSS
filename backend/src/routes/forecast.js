@@ -18,12 +18,17 @@ async function loadHouseholdData(householdId) {
   const billIds = bills.rows.map(b => b.id);
   const cardIds = creditCards.rows.map(c => c.id);
 
-  const [paidMarksRes, overridesRes] = await Promise.all([
+  const incomeIds = income.rows.map(i => i.id);
+
+  const [paidMarksRes, overridesRes, incomeOverridesRes] = await Promise.all([
     billIds.length
       ? db.query('SELECT * FROM bill_payment_marks WHERE bill_id = ANY($1::uuid[])', [billIds])
       : { rows: [] },
     cardIds.length
       ? db.query('SELECT * FROM credit_card_cycle_overrides WHERE credit_card_id = ANY($1::uuid[])', [cardIds])
+      : { rows: [] },
+    incomeIds.length
+      ? db.query('SELECT * FROM income_event_overrides WHERE income_event_id = ANY($1::uuid[])', [incomeIds])
       : { rows: [] },
   ]);
 
@@ -39,6 +44,12 @@ async function loadHouseholdData(householdId) {
     ccOverrides[ov.credit_card_id].push({ due_date: ov.due_date, override_amount: ov.override_amount });
   }
 
+  const incomeOverrides = {};
+  for (const ov of incomeOverridesRes.rows) {
+    if (!incomeOverrides[ov.income_event_id]) incomeOverrides[ov.income_event_id] = [];
+    incomeOverrides[ov.income_event_id].push({ occurrence_date: ov.occurrence_date, override_amount: ov.override_amount });
+  }
+
   return {
     accounts: accounts.rows,
     income: income.rows,
@@ -46,6 +57,7 @@ async function loadHouseholdData(householdId) {
     creditCards: creditCards.rows,
     billPaidMarks,
     ccOverrides,
+    incomeOverrides,
   };
 }
 

@@ -71,6 +71,59 @@ router.put('/:id', requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+// PATCH /accounts/:id/balance — quick balance update (logs previous value)
+router.patch('/:id/balance', requireAuth, requireAdmin, async (req, res) => {
+  const newBalance = parseFloat(req.body.balance);
+  if (Number.isNaN(newBalance)) {
+    return res.status(400).json({ error: 'balance must be a number' });
+  }
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: [current] } = await client.query(
+      'SELECT * FROM accounts WHERE id = $1 AND household_id = $2',
+      [req.params.id, req.user.householdId]
+    );
+    if (!current) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Account not found' }); }
+
+    // Log the change for audit trail
+    await client.query(
+      'INSERT INTO account_balance_updates (account_id, previous_balance, new_balance, updated_by) VALUES ($1,$2,$3,$4)',
+      [req.params.id, current.balance, newBalance, req.user.userId]
+    );
+
+    const { rows: [updated] } = await client.query(
+      'UPDATE accounts SET balance = $1 WHERE id = $2 RETURNING *',
+      [newBalance, req.params.id]
+    );
+    await client.query('COMMIT');
+    res.json(updated);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update balance' });
+  } finally {
+    client.release();
+  }
+});
+
+// GET /accounts/:id/balance-history — recent balance updates
+router.get('/:id/balance-history', requireAuth, async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT abu.* FROM account_balance_updates abu
+       JOIN accounts a ON a.id = abu.account_id
+       WHERE abu.account_id = $1 AND a.household_id = $2
+       ORDER BY abu.updated_at DESC LIMIT 10`,
+      [req.params.id, req.user.householdId]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch balance history' });
+  }
+});
+
 // DELETE /accounts/:id
 router.delete('/:id', requireAuth, requireAdmin, async (req, res) => {
   try {

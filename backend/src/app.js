@@ -8,6 +8,8 @@ const authRouter = require('./routes/auth');
 const accountsRouter = require('./routes/accounts');
 const { incomeRouter, billsRouter, cardsRouter } = require('./routes/financial');
 const { forecastRouter, scenarioRouter } = require('./routes/forecast');
+const alertsRouter = require('./routes/alerts');
+const { checkAndSendAlerts } = require('./services/alerts');
 const { requireAuth } = require('./middleware/auth');
 
 const app = express();
@@ -65,7 +67,17 @@ app.use('/income', apiLimiter, requireAuth, incomeRouter);
 app.use('/bills', apiLimiter, requireAuth, billsRouter);
 app.use('/cards', apiLimiter, requireAuth, cardsRouter);
 app.use('/forecast', apiLimiter, requireAuth, forecastRouter);
+
+// After every real forecast fetch (not simulate), check if alerts should fire.
+// Done async so it never delays the response.
+app.use('/forecast', (req, res, next) => {
+  if (req.method === 'GET' && req.user) {
+    checkAndSendAlerts(req.user.householdId).catch(() => {});
+  }
+  next();
+});
 app.use('/scenarios', apiLimiter, requireAuth, scenarioRouter);
+app.use('/alerts', apiLimiter, requireAuth, alertsRouter);
 
 // 404
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));

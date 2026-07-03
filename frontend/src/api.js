@@ -41,12 +41,22 @@ export const api = {
   createAccount: (body) => request('POST', '/accounts', body),
   updateAccount: (id, body) => request('PUT', `/accounts/${id}`, body),
   deleteAccount: (id) => request('DELETE', `/accounts/${id}`),
+  quickUpdateBalance: (id, balance) => request('PATCH', `/accounts/${id}/balance`, { balance }),
+  getBalanceHistory: (id) => request('GET', `/accounts/${id}/balance-history`),
 
   // Income
   getIncome: () => request('GET', '/income'),
   createIncome: (body) => request('POST', '/income', body),
   updateIncome: (id, body) => request('PUT', `/income/${id}`, body),
   deleteIncome: (id) => request('DELETE', `/income/${id}`),
+  getIncomeOverrides: (id) => request('GET', `/income/${id}/overrides`),
+  setIncomeOverride: (id, body) => request('POST', `/income/${id}/overrides`, body),
+  deleteIncomeOverride: (id, overrideId) => request('DELETE', `/income/${id}/overrides/${overrideId}`),
+
+  // Alerts
+  getAlertPrefs: () => request('GET', '/alerts'),
+  saveAlertPrefs: (body) => request('PUT', '/alerts', body),
+  sendTestAlert: () => request('POST', '/alerts/test'),
 
   // Bills
   getBills: () => request('GET', '/bills'),

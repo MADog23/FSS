@@ -60,6 +60,68 @@ incomeRouter.delete('/:id', requireAuth, requireAdmin, async (req, res) => {
   res.json({ deleted: true });
 });
 
+// ── Income per-occurrence overrides (fluctuating pay) ─────────────────────
+
+incomeRouter.get('/:id/overrides', requireAuth, async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT ieo.* FROM income_event_overrides ieo
+       JOIN income_events ie ON ie.id = ieo.income_event_id
+       WHERE ieo.income_event_id = $1 AND ie.household_id = $2
+       ORDER BY ieo.occurrence_date`,
+      [req.params.id, req.user.householdId]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch income overrides' });
+  }
+});
+
+incomeRouter.post('/:id/overrides', requireAuth, requireAdmin, async (req, res) => {
+  const { occurrence_date, override_amount, note } = req.body;
+  if (!occurrence_date || override_amount == null) {
+    return res.status(400).json({ error: 'occurrence_date and override_amount are required' });
+  }
+  try {
+    const { rows: [inc] } = await db.query(
+      'SELECT id FROM income_events WHERE id = $1 AND household_id = $2',
+      [req.params.id, req.user.householdId]
+    );
+    if (!inc) return res.status(404).json({ error: 'Income event not found' });
+
+    const { rows: [row] } = await db.query(
+      `INSERT INTO income_event_overrides (income_event_id, occurrence_date, override_amount, note)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (income_event_id, occurrence_date)
+       DO UPDATE SET override_amount = EXCLUDED.override_amount, note = EXCLUDED.note
+       RETURNING *`,
+      [req.params.id, occurrence_date, override_amount, note || null]
+    );
+    res.status(201).json(row);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to set income override' });
+  }
+});
+
+incomeRouter.delete('/:id/overrides/:overrideId', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { rowCount } = await db.query(
+      `DELETE FROM income_event_overrides ieo
+       USING income_events ie
+       WHERE ieo.id = $1 AND ieo.income_event_id = ie.id
+         AND ie.household_id = $2 AND ie.id = $3`,
+      [req.params.overrideId, req.user.householdId, req.params.id]
+    );
+    if (rowCount === 0) return res.status(404).json({ error: 'Override not found' });
+    res.json({ deleted: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to delete income override' });
+  }
+});
+
 // ── Bills ─────────────────────────────────────────────────────────────────
 const billsRouter = express.Router();
 
