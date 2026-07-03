@@ -58,6 +58,8 @@ function expandRecurring(name, amount, frequency, nextDate, accountId, type, sta
     if (frequency === 'weekly') d = addDays(d, 7);
     else if (frequency === 'biweekly') d = addDays(d, 14);
     else if (frequency === 'monthly') d = addMonths(d, 1);
+    else if (frequency === 'quarterly') d = addMonths(d, 3);
+    else if (frequency === 'yearly') d = addMonths(d, 12);
     else break; // once
   }
   return events;

@@ -38,7 +38,7 @@ CREATE TABLE income_events (
   household_id UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   amount NUMERIC(14,2) NOT NULL,
-  frequency TEXT NOT NULL CHECK (frequency IN ('weekly','biweekly','monthly','once')),
+  frequency TEXT NOT NULL CHECK (frequency IN ('weekly','biweekly','monthly','quarterly','yearly','once')),
   next_date DATE NOT NULL,
   source_account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -50,7 +50,7 @@ CREATE TABLE bill_events (
   household_id UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   amount NUMERIC(14,2) NOT NULL,
-  frequency TEXT NOT NULL CHECK (frequency IN ('weekly','biweekly','monthly','once')),
+  frequency TEXT NOT NULL CHECK (frequency IN ('weekly','biweekly','monthly','quarterly','yearly','once')),
   next_date DATE NOT NULL,
   target_account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
