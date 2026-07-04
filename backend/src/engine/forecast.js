@@ -399,14 +399,12 @@ function runForecast(data, horizonDays, scenarioOverlays = []) {
   const snapshots = [];
 
   for (const ev of events) {
-    // Skip completed events that occurred in the past — their effect is already
-    // reflected in the current account balance. Including them would double-count
+    // Skip completed events from today or earlier — their effect is already
+    // reflected in the current account balance. Including them double-counts
     // the transaction: once via the stored balance and once via the simulation.
-    // Future completed events are kept so their actual_amount is used instead
-    // of the projected amount (e.g. a paycheck marked complete ahead of time).
     const evDate = new Date(ev.date);
     evDate.setHours(0, 0, 0, 0);
-    if (ev.isCompleted && evDate < today) continue;
+    if (ev.isCompleted && evDate <= today) continue;
 
     // Apply event
     if (ev.type === 'income') {
