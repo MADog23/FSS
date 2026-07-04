@@ -80,6 +80,20 @@ forecastRouter.get('/', requireAuth, async (req, res) => {
   try {
     const data = await loadHouseholdData(req.user.householdId);
     const result = runForecast(data, horizonDays);
+
+    // Detect account ID mismatches — events whose accountId doesn't match any account.
+    // This is the most common cause of the buffer not deducting predicted costs.
+    const accountIds = new Set(data.accounts.map(a => a.id));
+    const orphanedEvents = result.events.filter(e => e.accountId && !accountIds.has(e.accountId));
+    if (orphanedEvents.length > 0) {
+      result._warnings = result._warnings || [];
+      result._warnings.push({
+        type: 'orphaned_events',
+        message: `${orphanedEvents.length} event(s) reference account IDs that do not exist — their amounts will not affect any balance. Check that bills, income, and cards reference valid accounts.`,
+        affected: orphanedEvents.map(e => ({ name: e.name, accountId: e.accountId, date: e.date })),
+      });
+    }
+
     res.json(result);
   } catch (err) {
     console.error(err);

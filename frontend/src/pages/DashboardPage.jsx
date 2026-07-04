@@ -64,9 +64,24 @@ export default function DashboardPage() {
 
   const nextObligation = events.find(e => !e.isCompleted && (e.type === 'expense' || e.type === 'cc_payment'));
   const nextIncome = events.find(e => !e.isCompleted && e.type === 'income');
+  const warnings = forecast._warnings || [];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+      {/* ── Data warnings ────────────────────────────────────────── */}
+      {warnings.map((w, i) => (
+        <div key={i} style={{ background: 'var(--color-background-warning)', border: '0.5px solid var(--color-border-warning)', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: 'var(--color-text-warning)' }}>
+          <div style={{ fontWeight: 500, marginBottom: 4 }}>⚠ Data issue — buffer may be inaccurate</div>
+          <div style={{ fontSize: 12 }}>{w.message}</div>
+          {w.affected?.length > 0 && (
+            <div style={{ marginTop: 6, fontSize: 11, color: 'var(--color-text-warning)', opacity: 0.85 }}>
+              Affected: {w.affected.map(a => a.name).join(', ')}
+              <br />Fix: go to Bills, Income, or Cards and reassign these items to a valid account using the Edit button.
+            </div>
+          )}
+        </div>
+      ))}
 
       {/* ── Primary status card ─────────────────────────────────── */}
       <div style={cardStyle}>
