@@ -53,8 +53,11 @@ export const api = {
   setIncomeOverride: (id, body) => request('POST', `/income/${id}/overrides`, body),
   deleteIncomeOverride: (id, overrideId) => request('DELETE', `/income/${id}/overrides/${overrideId}`),
 
-  // Alerts
-  getAlertPrefs: () => request('GET', '/alerts'),
+  // Event completions
+  getCompletions: (horizon) => request('GET', `/completions?horizon=${horizon}`),
+  completeEvent: (body) => request('POST', '/completions', body),
+  updateCompletion: (id, body) => request('PATCH', `/completions/${id}`, body),
+  uncompleteEvent: (id) => request('DELETE', `/completions/${id}`),
   saveAlertPrefs: (body) => request('PUT', '/alerts', body),
   sendTestAlert: () => request('POST', '/alerts/test'),
 

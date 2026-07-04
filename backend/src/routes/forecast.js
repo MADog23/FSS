@@ -50,11 +50,19 @@ async function loadHouseholdData(householdId) {
     incomeOverrides[ov.income_event_id].push({ occurrence_date: ov.occurrence_date, override_amount: ov.override_amount });
   }
 
+  // Load completions (v1.5.0+)
+  const completionsRes = await db.query(
+    `SELECT * FROM event_completions WHERE household_id = $1
+     AND occurrence_date >= (CURRENT_DATE - INTERVAL '7 days')`,
+    [householdId]
+  );
+
   return {
     accounts: accounts.rows,
     income: income.rows,
     bills: bills.rows,
     creditCards: creditCards.rows,
+    completions: completionsRes.rows,
     billPaidMarks,
     ccOverrides,
     incomeOverrides,

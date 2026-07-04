@@ -8,7 +8,7 @@ const addDays = (d, n) => { const r = new Date(d); r.setDate(r.getDate() + n); r
 const HORIZONS = [30, 60, 90];
 
 const STATUS = {
-  safe:    { dot: 'var(--color-bar-success)', label: 'Safe',    labelColor: 'var(--color-text-success)' },
+  safe:    { dot: 'var(--color-bar-success)',  label: 'Safe',    labelColor: 'var(--color-text-success)' },
   warning: { dot: 'var(--color-text-warning)', label: 'Warning', labelColor: 'var(--color-text-warning)' },
   danger:  { dot: 'var(--color-text-danger)',  label: 'Danger',  labelColor: 'var(--color-text-danger)'  },
 };
@@ -52,7 +52,6 @@ export default function DashboardPage() {
 
   const events = forecast.events || [];
   const cfg = STATUS[forecast.status] || STATUS.safe;
-
   const scrubbedEvent = scrubIndex != null ? events[scrubIndex] : null;
   const displayedBuffer = scrubbedEvent ? scrubbedEvent.freeCashAsOf : forecast.freeCash;
   const bufferLabel = scrubbedEvent ? `as of ${fmtDate(scrubbedEvent.date)}` : `${horizon}-day buffer`;
@@ -63,14 +62,14 @@ export default function DashboardPage() {
     ? `Warning from ${fmtDate(forecast.warningDate)}`
     : `Safe through ${fmtDate(addDays(new Date(), horizon))}`;
 
-  const nextObligation = events.find(e => e.type === 'expense' || e.type === 'cc_payment');
-  const nextIncome = events.find(e => e.type === 'income');
+  const nextObligation = events.find(e => !e.isCompleted && (e.type === 'expense' || e.type === 'cc_payment'));
+  const nextIncome = events.find(e => !e.isCompleted && e.type === 'income');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
       {/* ── Primary status card ─────────────────────────────────── */}
-      <div style={card}>
+      <div style={cardStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 10, height: 10, borderRadius: '50%', background: cfg.dot, flexShrink: 0 }} />
@@ -81,7 +80,6 @@ export default function DashboardPage() {
           </span>
         </div>
 
-        {/* Buffer figure */}
         <div style={{ borderTop: divider, paddingTop: 14, paddingBottom: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
             <span style={sectionLabel}>{bufferLabel}</span>
@@ -104,17 +102,15 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Why explainer */}
         {showWhy && (
           <div style={{ background: 'var(--color-background-secondary)', borderRadius: 8, padding: '10px 12px', fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.65, marginBottom: 14 }}>
             <div style={{ fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: 4 }}>How your available buffer is calculated</div>
             <div>Your buffer is the <strong>lowest point</strong> your spendable balance reaches {scrubbedEvent ? `between today and ${fmtDate(scrubbedEvent.date)}` : `over the next ${horizon} days`}, after every income, bill, and card payment is applied in order.</div>
             <div style={{ marginTop: 6 }}>Spendable now: <strong>{fmt(forecast.spendableTotal)}</strong>{forecast.excludedTotal > 0 && <span style={{ color: 'var(--color-text-muted)' }}> · {fmt(forecast.excludedTotal)} set aside (not counted)</span>}</div>
-            <div style={{ marginTop: 6, color: 'var(--color-text-muted)' }}>A $0 buffer means the spendable balance would go negative at some point. Mark accounts as "set aside" on the Accounts tab to exclude them.</div>
+            <div style={{ marginTop: 6, color: 'var(--color-text-muted)' }}>Completed events use their actual amount. Pending events use the projected amount.</div>
           </div>
         )}
 
-        {/* Deficit */}
         {forecast.deficit > 0 && (
           <div style={{ background: 'var(--color-background-danger)', border: '0.5px solid var(--color-border-danger)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: 'var(--color-text-danger)', marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <div style={{ fontWeight: 500 }}>Deficit detected</div>
@@ -124,7 +120,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Next obligation */}
         {nextObligation && (
           <div style={{ borderTop: divider, paddingTop: 12 }}>
             <div style={sectionLabel}>Next obligation</div>
@@ -161,13 +156,10 @@ export default function DashboardPage() {
       {/* ── Account projection cards ─────────────────────────────── */}
       <AccountBalances forecast={forecast} />
 
-      {/* ── Balance chart toggle ──────────────────────────────────── */}
+      {/* ── Balance chart ────────────────────────────────────────── */}
       <div style={{ background: 'var(--color-background-primary)', borderRadius: 12, border: '0.5px solid var(--color-border-tertiary)' }}>
         <button onClick={() => setShowChart(!showChart)} style={{ width: '100%', textAlign: 'left', padding: '12px 14px', fontSize: 13, color: 'var(--color-text-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: 'none', borderRadius: 12, background: 'transparent' }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <span style={{ fontSize: 15 }}>📈</span>
-            <span>Balance projection</span>
-          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}><span style={{ fontSize: 15 }}>📈</span><span>Balance projection</span></span>
           <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{showChart ? '▲' : '▼'}</span>
         </button>
         {showChart && <BalanceChart events={events} horizon={horizon} initialSpendable={forecast.spendableTotal} />}
@@ -183,13 +175,13 @@ export default function DashboardPage() {
           </span>
           <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{showTimeline ? '▲' : '▼'}</span>
         </button>
-        {showTimeline && <Timeline events={events} scrubIndex={scrubIndex} onScrub={setScrubIndex} />}
+        {showTimeline && <Timeline events={events} scrubIndex={scrubIndex} onScrub={setScrubIndex} onRefresh={refresh} horizon={horizon} />}
       </div>
     </div>
   );
 }
 
-// ── Account projection cards (read-only) ──────────────────────────────────
+// ── Account projection cards ───────────────────────────────────────────────
 function AccountBalances({ forecast }) {
   const entries = Object.entries(forecast.finalBalances || {});
   if (entries.length === 0) return null;
@@ -202,7 +194,6 @@ function AccountBalances({ forecast }) {
         const isSpendable = spendableIds.has(id);
         const pct = isNeg ? 0 : Math.min(100, (bal / (bal + 1500)) * 100);
         const barColor = isNeg ? 'var(--color-bar-danger)' : isSpendable ? 'var(--color-bar-success)' : 'var(--color-bar-neutral)';
-
         return (
           <div key={id} style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, padding: '12px 14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
@@ -224,13 +215,12 @@ function AccountBalances({ forecast }) {
   );
 }
 
-// ── Balance projection chart (SVG, no external library) ───────────────────
+// ── Balance chart ──────────────────────────────────────────────────────────
 function BalanceChart({ events, horizon, initialSpendable }) {
   const W = 340, H = 140, PAD = { top: 12, right: 12, bottom: 28, left: 50 };
   const today = new Date(); today.setHours(0,0,0,0);
   const endDate = addDays(today, horizon);
 
-  // Build daily spendable balance series from events
   const points = [{ date: today, balance: initialSpendable }];
   let running = initialSpendable;
   events.forEach(ev => {
@@ -238,114 +228,264 @@ function BalanceChart({ events, horizon, initialSpendable }) {
     else running -= ev.amount;
     points.push({ date: new Date(ev.date), balance: running });
   });
-  // Add endpoint
   points.push({ date: endDate, balance: running });
 
   const minBal = Math.min(0, ...points.map(p => p.balance));
   const maxBal = Math.max(...points.map(p => p.balance), 1);
   const totalDays = horizon || 30;
 
-  const xScale = (date) => {
-    const days = Math.max(0, Math.min(totalDays, (date - today) / 86400000));
-    return PAD.left + (days / totalDays) * (W - PAD.left - PAD.right);
-  };
-  const yScale = (bal) => {
-    const range = maxBal - minBal;
-    return PAD.top + (1 - (bal - minBal) / (range || 1)) * (H - PAD.top - PAD.bottom);
-  };
+  const xScale = (date) => PAD.left + (Math.max(0, Math.min(totalDays, (date - today) / 86400000)) / totalDays) * (W - PAD.left - PAD.right);
+  const yScale = (bal) => PAD.top + (1 - (bal - minBal) / ((maxBal - minBal) || 1)) * (H - PAD.top - PAD.bottom);
 
   const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${xScale(p.date).toFixed(1)},${yScale(p.balance).toFixed(1)}`).join(' ');
-  const fillD = `${pathD} L${xScale(endDate).toFixed(1)},${yScale(minBal < 0 ? 0 : minBal + (maxBal - minBal) * 0).toFixed(1)} L${xScale(today).toFixed(1)},${yScale(0).toFixed(1)} Z`;
-
   const zeroY = yScale(0);
   const hasNegative = minBal < 0;
-
-  // Y axis labels
   const yTicks = [maxBal, (maxBal + minBal) / 2, minBal].filter((v, i, a) => a.indexOf(v) === i);
-
-  // X axis labels (start, mid, end)
   const xTicks = [today, addDays(today, Math.round(horizon / 2)), endDate];
 
   return (
     <div style={{ padding: '0 14px 14px', borderTop: '0.5px solid var(--color-border-tertiary)' }}>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
-        {/* Zero line */}
-        {hasNegative && (
-          <line x1={PAD.left} y1={zeroY} x2={W - PAD.right} y2={zeroY} stroke="var(--color-border-danger)" strokeWidth="0.5" strokeDasharray="3,3" />
-        )}
-
-        {/* Area fill */}
-        <path d={fillD} fill="var(--color-bar-success)" opacity="0.08" />
-
-        {/* Line */}
+        {hasNegative && <line x1={PAD.left} y1={zeroY} x2={W - PAD.right} y2={zeroY} stroke="var(--color-border-danger)" strokeWidth="0.5" strokeDasharray="3,3" />}
+        <path d={`${pathD} L${xScale(endDate).toFixed(1)},${yScale(Math.max(minBal, 0)).toFixed(1)} L${xScale(today).toFixed(1)},${yScale(Math.max(minBal, 0)).toFixed(1)} Z`} fill="var(--color-bar-success)" opacity="0.08" />
         <path d={pathD} fill="none" stroke="var(--color-bar-success)" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
-
-        {/* Y axis labels */}
-        {yTicks.map((v, i) => (
-          <text key={i} x={PAD.left - 4} y={yScale(v) + 4} textAnchor="end" fontSize="9" fill="var(--color-text-muted)">
-            {v >= 1000 ? `$${Math.round(v/1000)}k` : `$${Math.round(v)}`}
-          </text>
-        ))}
-
-        {/* X axis labels */}
-        {xTicks.map((d, i) => (
-          <text key={i} x={xScale(d)} y={H - 4} textAnchor={i === 0 ? 'start' : i === 2 ? 'end' : 'middle'} fontSize="9" fill="var(--color-text-muted)">
-            {fmtDate(d)}
-          </text>
-        ))}
-
-        {/* Danger zone indicator */}
-        {hasNegative && (
-          <text x={PAD.left + 4} y={H - PAD.bottom - 4} fontSize="9" fill="var(--color-text-danger)">below $0</text>
-        )}
+        {yTicks.map((v, i) => <text key={i} x={PAD.left - 4} y={yScale(v) + 4} textAnchor="end" fontSize="9" fill="var(--color-text-muted)">{v >= 1000 ? `$${Math.round(v/1000)}k` : `$${Math.round(v)}`}</text>)}
+        {xTicks.map((d, i) => <text key={i} x={xScale(d)} y={H - 4} textAnchor={i === 0 ? 'start' : i === 2 ? 'end' : 'middle'} fontSize="9" fill="var(--color-text-muted)">{fmtDate(d)}</text>)}
       </svg>
     </div>
   );
 }
 
-// ── Event timeline ─────────────────────────────────────────────────────────
-function Timeline({ events, scrubIndex, onScrub }) {
-  const shown = events.slice(0, 40);
+// ── Event timeline with inline edit + complete ─────────────────────────────
+function Timeline({ events, scrubIndex, onScrub, onRefresh, horizon }) {
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [editAmount, setEditAmount] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const shown = events.slice(0, 50);
   const fmt2 = (n) => `$${Math.abs(Math.round(n)).toLocaleString()}`;
 
-  const typeColor = (type) => {
-    if (type === 'income') return 'var(--color-bar-success)';
-    if (type === 'cc_payment') return 'var(--color-text-warning)';
+  const typeColor = (ev) => {
+    if (ev.isCompleted) return 'var(--color-text-muted)';
+    if (ev.type === 'income') return 'var(--color-bar-success)';
+    if (ev.type === 'cc_payment') return 'var(--color-text-warning)';
     return 'var(--color-text-danger)';
+  };
+
+  const openEdit = (i, ev) => {
+    setEditingIndex(i);
+    setEditAmount(String(ev.amount));
+    setError('');
+  };
+
+  const closeEdit = () => {
+    setEditingIndex(null);
+    setEditAmount('');
+    setError('');
+  };
+
+  // Build the body for a completion POST from an event
+  const completionBody = (ev, actualAmount) => {
+    const body = { occurrence_date: ev.occurrenceDate, actual_amount: actualAmount };
+    if (ev.sourceType === 'income') body.income_event_id = ev.sourceId;
+    else if (ev.sourceType === 'bill') body.bill_event_id = ev.sourceId;
+    else if (ev.sourceType === 'cc') body.credit_card_id = ev.sourceId;
+    return body;
+  };
+
+  const markComplete = async (ev, i) => {
+    if (!ev.sourceId || ev.sourceType === 'scenario') return;
+    setBusy(true);
+    setError('');
+    try {
+      const amount = editingIndex === i && editAmount !== ''
+        ? parseFloat(editAmount)
+        : null; // null = use projected amount
+      await api.completeEvent(completionBody(ev, amount));
+      closeEdit();
+      await onRefresh();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const markIncomplete = async (ev) => {
+    if (!ev.completionId) return;
+    setBusy(true);
+    setError('');
+    try {
+      await api.uncompleteEvent(ev.completionId);
+      await onRefresh();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveEdit = async (ev, i) => {
+    const amt = parseFloat(editAmount);
+    if (Number.isNaN(amt) || amt < 0) { setError('Enter a valid amount.'); return; }
+    setBusy(true);
+    setError('');
+    try {
+      if (ev.isCompleted && ev.completionId) {
+        // Already completed — just update the amount
+        await api.updateCompletion(ev.completionId, { actual_amount: amt });
+      } else {
+        // Mark complete with the edited amount
+        await api.completeEvent(completionBody(ev, amt));
+      }
+      closeEdit();
+      await onRefresh();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
     <div style={{ borderTop: '0.5px solid var(--color-border-tertiary)', padding: '4px 14px 10px' }}>
       <div style={{ fontSize: 11, color: 'var(--color-text-muted)', padding: '8px 0 4px' }}>
-        Tap any event to see your buffer as of that point in time
+        Tap a row to scrub the buffer · use Edit to mark complete or adjust the amount
       </div>
-      {shown.length === 0 && <div style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '1.5rem', fontSize: 13 }}>No events in this horizon</div>}
+
+      {error && (
+        <div style={{ fontSize: 12, color: 'var(--color-text-danger)', marginBottom: 6 }}>{error}</div>
+      )}
+
+      {shown.length === 0 && (
+        <div style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '1.5rem', fontSize: 13 }}>No events in this horizon</div>
+      )}
+
       {shown.map((ev, i) => {
         const isSelected = scrubIndex === i;
+        const isEditing = editingIndex === i;
+        const canComplete = ev.sourceId && ev.sourceType !== 'scenario';
+
         return (
-          <div key={i} onClick={() => onScrub(isSelected ? null : i)} style={{ display: 'flex', gap: 10, padding: '8px 8px', margin: '2px -8px', borderRadius: 8, cursor: 'pointer', background: isSelected ? 'var(--color-background-secondary)' : 'transparent', border: `0.5px solid ${isSelected ? 'var(--color-border-secondary)' : 'transparent'}`, alignItems: 'flex-start', transition: 'background 0.1s' }}>
-            <div style={{ width: 7, height: 7, borderRadius: '50%', marginTop: 5, flexShrink: 0, background: typeColor(ev.type) }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
-                <span style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.name}</span>
-                <span style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', color: ev.type === 'income' ? 'var(--color-text-success)' : 'var(--color-text-danger)' }}>
-                  {ev.type === 'income' ? '+' : '−'}{fmt2(ev.amount)}
-                </span>
+          <div key={i} style={{
+            padding: '8px 0',
+            borderBottom: i < shown.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none',
+            opacity: ev.isCompleted ? 0.55 : 1,
+            transition: 'opacity 0.15s',
+          }}>
+            {/* Main event row */}
+            <div
+              onClick={() => !isEditing && onScrub(isSelected ? null : i)}
+              style={{ display: 'flex', gap: 10, alignItems: 'flex-start', cursor: isEditing ? 'default' : 'pointer', padding: '0 6px', margin: '0 -6px', borderRadius: 6, background: isSelected && !isEditing ? 'var(--color-background-secondary)' : 'transparent' }}
+            >
+              {/* Status dot */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 4, gap: 3 }}>
+                <div style={{ width: 7, height: 7, borderRadius: '50%', background: typeColor(ev), flexShrink: 0 }} />
+                {ev.isCompleted && <div style={{ width: 1, flex: 1, background: 'var(--color-border-secondary)', minHeight: 8 }} />}
               </div>
-              <div style={{ display: 'flex', gap: 6, marginTop: 3, flexWrap: 'wrap', alignItems: 'center' }}>
-                <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{new Date(ev.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>·</span>
-                <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>buffer: {fmt2(ev.freeCashAsOf)}</span>
-                {ev.type === 'cc_payment' && <Badge text="card payment" color="warning" />}
-                {ev.isScenario && <Badge text="scenario" color="warning" />}
-                {ev.isOverride && <Badge text="overridden" color="neutral" />}
-                {ev.isOverrideAmount && <Badge text="adjusted pay" color="success" />}
+
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
+                  <span style={{
+                    fontSize: 13,
+                    fontWeight: 500,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    textDecoration: ev.isCompleted ? 'line-through' : 'none',
+                    color: ev.isCompleted ? 'var(--color-text-muted)' : 'var(--color-text-primary)',
+                  }}>
+                    {ev.name}
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', color: ev.isCompleted ? 'var(--color-text-muted)' : ev.type === 'income' ? 'var(--color-text-success)' : 'var(--color-text-danger)' }}>
+                    {ev.type === 'income' ? '+' : '−'}{fmt2(ev.amount)}
+                    {ev.isEditedAmount && (
+                      <span style={{ fontSize: 10, color: 'var(--color-text-muted)', marginLeft: 4, textDecoration: 'none' }}>
+                        (was {fmt2(ev.projectedAmount)})
+                      </span>
+                    )}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', gap: 6, marginTop: 3, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                    {new Date(ev.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                  <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>·</span>
+                  <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                    buffer: {fmt2(ev.freeCashAsOf)}
+                  </span>
+                  {ev.isCompleted && <Badge text="✓ completed" color="success" />}
+                  {ev.type === 'cc_payment' && !ev.isCompleted && <Badge text="card payment" color="warning" />}
+                  {ev.isScenario && <Badge text="scenario" color="warning" />}
+                </div>
               </div>
+
+              {/* Edit / Undo button */}
+              {canComplete && !isEditing && (
+                <button
+                  onClick={e => { e.stopPropagation(); ev.isCompleted ? markIncomplete(ev) : openEdit(i, ev); }}
+                  disabled={busy}
+                  style={{ fontSize: 11, padding: '3px 9px', flexShrink: 0, whiteSpace: 'nowrap', color: ev.isCompleted ? 'var(--color-text-muted)' : 'var(--color-text-secondary)', borderColor: 'var(--color-border-tertiary)' }}
+                >
+                  {ev.isCompleted ? 'Undo' : 'Edit'}
+                </button>
+              )}
             </div>
+
+            {/* Inline edit panel */}
+            {isEditing && (
+              <div style={{ marginTop: 8, marginLeft: 17, background: 'var(--color-background-secondary)', borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                  Projected: {ev.type === 'income' ? '+' : '−'}{fmt2(ev.projectedAmount)}
+                  {' · '}Edit the actual amount if it differs, then mark complete.
+                </div>
+
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <div style={{ position: 'relative', flex: 1 }}>
+                    <span style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: 'var(--color-text-muted)', pointerEvents: 'none' }}>$</span>
+                    <input
+                      type="number"
+                      value={editAmount}
+                      onChange={e => setEditAmount(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && saveEdit(ev, i)}
+                      autoFocus
+                      style={{ paddingLeft: 20, fontSize: 13 }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    onClick={() => markComplete(ev, i)}
+                    disabled={busy}
+                    style={{ flex: 1, padding: '7px', background: 'var(--color-bar-success)', color: '#fff', border: 'none', fontSize: 12, fontWeight: 500 }}
+                  >
+                    {busy ? '…' : '✓ Mark complete'}
+                  </button>
+                  {editAmount !== String(ev.amount) && editAmount !== '' && (
+                    <button
+                      onClick={() => saveEdit(ev, i)}
+                      disabled={busy}
+                      style={{ flex: 1, padding: '7px', background: 'var(--color-text-info)', color: '#fff', border: 'none', fontSize: 12 }}
+                    >
+                      Save amount only
+                    </button>
+                  )}
+                  <button onClick={closeEdit} style={{ padding: '7px 12px', fontSize: 12 }}>Cancel</button>
+                </div>
+              </div>
+            )}
           </div>
         );
       })}
-      {events.length > 40 && <div style={{ textAlign: 'center', paddingTop: 8, fontSize: 11, color: 'var(--color-text-muted)' }}>+{events.length - 40} more events beyond this view</div>}
+
+      {events.length > 50 && (
+        <div style={{ textAlign: 'center', paddingTop: 8, fontSize: 11, color: 'var(--color-text-muted)' }}>
+          +{events.length - 50} more events beyond this view
+        </div>
+      )}
     </div>
   );
 }
@@ -360,6 +500,6 @@ function Badge({ text, color }) {
   return <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 6, background: s.bg, color: s.fg, border: `0.5px solid ${s.border}` }}>{text}</span>;
 }
 
-const card = { background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 16, padding: '18px 16px' };
+const cardStyle = { background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 16, padding: '18px 16px' };
 const divider = '0.5px solid var(--color-border-tertiary)';
 const sectionLabel = { fontSize: 11, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' };
