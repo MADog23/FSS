@@ -124,190 +124,47 @@ function expandCreditCardPayments(card, startDate, endDate, overrides = []) {
 
 /**
  * Build the full sorted event list from all financial data.
- *
- * data.completions: Map keyed by a canonical event key -> completion record.
- * A completion record has: { id, actual_amount, completed_at }
- *
- * Completed events:
- *   - Use actual_amount instead of projected amount (if actual_amount is set)
- *   - Are flagged as isCompleted: true in the snapshot
- *   - Still appear in the timeline (for record-keeping) but with visual distinction
- *
- * Legacy override maps (billPaidMarks, ccOverrides, incomeOverrides) are still
- * read for backward compatibility with data entered before v1.5.0.
+ * data.billPaidMarks: { [billId]: Set('YYYY-MM-DD') }
+ * data.ccOverrides: { [cardId]: [{ due_date, override_amount }] }
  */
 function buildEvents(data, startDate, endDate, scenarioOverlays = []) {
   const events = [];
-
-  // Build a lookup from canonical event key -> completion
-  // Key format: "income:{incomeId}:{YYYY-MM-DD}"
-  //             "bill:{billId}:{YYYY-MM-DD}"
-  //             "cc:{cardId}:{YYYY-MM-DD}"
-  const completionMap = new Map();
-  for (const c of (data.completions || [])) {
-    const dateKey = new Date(c.occurrence_date).toISOString().slice(0, 10);
-    if (c.income_event_id)  completionMap.set(`income:${c.income_event_id}:${dateKey}`, c);
-    if (c.bill_event_id)    completionMap.set(`bill:${c.bill_event_id}:${dateKey}`, c);
-    if (c.credit_card_id)   completionMap.set(`cc:${c.credit_card_id}:${dateKey}`, c);
-  }
-
-  // Legacy: bill paid marks (v1.4.x data) — treated as completions with no amount override
   const billPaidMarks = data.billPaidMarks || {};
-  const ccOverrides   = data.ccOverrides   || {};
-  const incomeOverridesMap = data.incomeOverrides || {};
+  const ccOverrides = data.ccOverrides || {};
 
   // Income
+  const incomeOverridesMap = data.incomeOverrides || {};
   for (const inc of data.income) {
-    // Legacy income overrides
-    const legacyOverrides = incomeOverridesMap[inc.id]
+    const overrides = incomeOverridesMap[inc.id]
       ? new Map(incomeOverridesMap[inc.id].map(o => [
           new Date(o.occurrence_date).toISOString().slice(0, 10),
           o.override_amount,
         ]))
       : null;
-
-    let d = startOfDay(new Date(inc.next_date));
-    while (d <= endDate) {
-      const dateKey = d.toISOString().slice(0, 10);
-      if (d >= startDate) {
-        const completionKey = `income:${inc.id}:${dateKey}`;
-        const completion = completionMap.get(completionKey);
-        // Amount: completion actual > legacy override > projected default
-        const projectedAmount = parseFloat(inc.amount);
-        const legacyOverride = legacyOverrides?.get(dateKey);
-        const actualAmount = completion?.actual_amount != null
-          ? parseFloat(completion.actual_amount)
-          : legacyOverride != null
-          ? parseFloat(legacyOverride)
-          : projectedAmount;
-
-        events.push({
-          date: new Date(d),
-          type: 'income',
-          name: inc.name,
-          amount: actualAmount,
-          accountId: inc.source_account_id,
-          sourceId: inc.id,
-          sourceType: 'income',
-          projectedAmount,
-          isCompleted: !!completion,
-          completionId: completion?.id || null,
-          isEditedAmount: actualAmount !== projectedAmount,
-          occurrenceDate: dateKey,
-        });
-      }
-      if (inc.frequency === 'weekly')     d = addDays(d, 7);
-      else if (inc.frequency === 'biweekly')  d = addDays(d, 14);
-      else if (inc.frequency === 'monthly')   d = addMonths(d, 1);
-      else if (inc.frequency === 'quarterly') d = addMonths(d, 3);
-      else if (inc.frequency === 'yearly')    d = addMonths(d, 12);
-      else break;
-    }
+    events.push(...expandRecurring(
+      inc.name, inc.amount, inc.frequency,
+      inc.next_date, inc.source_account_id,
+      'income', startDate, endDate,
+      { sourceId: inc.id },
+      null,
+      overrides
+    ));
   }
 
   // Bills
   for (const bill of data.bills) {
-    const legacyPaidDates = billPaidMarks[bill.id] || null;
-
-    let d = startOfDay(new Date(bill.next_date));
-    while (d <= endDate) {
-      const dateKey = d.toISOString().slice(0, 10);
-      const completionKey = `bill:${bill.id}:${dateKey}`;
-      const completion = completionMap.get(completionKey);
-      const legacyPaid = legacyPaidDates && legacyPaidDates.has(dateKey);
-
-      if (d >= startDate && !legacyPaid) {
-        const projectedAmount = parseFloat(bill.amount);
-        const actualAmount = completion?.actual_amount != null
-          ? parseFloat(completion.actual_amount)
-          : projectedAmount;
-
-        events.push({
-          date: new Date(d),
-          type: 'expense',
-          name: bill.name,
-          amount: actualAmount,
-          accountId: bill.target_account_id,
-          sourceId: bill.id,
-          sourceType: 'bill',
-          projectedAmount,
-          isCompleted: !!completion,
-          completionId: completion?.id || null,
-          isEditedAmount: actualAmount !== projectedAmount,
-          occurrenceDate: dateKey,
-        });
-      }
-      if (bill.frequency === 'weekly')      d = addDays(d, 7);
-      else if (bill.frequency === 'biweekly')   d = addDays(d, 14);
-      else if (bill.frequency === 'monthly')    d = addMonths(d, 1);
-      else if (bill.frequency === 'quarterly')  d = addMonths(d, 3);
-      else if (bill.frequency === 'yearly')     d = addMonths(d, 12);
-      else break;
-    }
+    events.push(...expandRecurring(
+      bill.name, bill.amount, bill.frequency,
+      bill.next_date, bill.target_account_id,
+      'expense', startDate, endDate,
+      { sourceId: bill.id },
+      billPaidMarks[bill.id] || null
+    ));
   }
 
   // Credit card payments
   for (const card of data.creditCards) {
-    const legacyCcOverrides = ccOverrides[card.id] || [];
-    const legacyOverrideMap = new Map(
-      legacyCcOverrides.map(o => [new Date(o.due_date).toISOString().slice(0, 10), parseFloat(o.override_amount)])
-    );
-
-    let cycleDate = new Date(startDate.getFullYear(), startDate.getMonth(), card.cycle_day_of_month);
-    if (cycleDate < startDate) cycleDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, card.cycle_day_of_month);
-
-    let remainingBalance = parseFloat(card.balance);
-    const maxCycles = 24;
-
-    for (let i = 0; i < maxCycles; i++) {
-      if (cycleDate > endDate || remainingBalance <= 0) break;
-
-      const dueDate = addDays(cycleDate, parseInt(card.due_offset_days));
-      const dueKey = dueDate.toISOString().slice(0, 10);
-
-      const completionKey = `cc:${card.id}:${dueKey}`;
-      const completion = completionMap.get(completionKey);
-
-      let projectedPayment = 0;
-      if (legacyOverrideMap.has(dueKey)) {
-        projectedPayment = legacyOverrideMap.get(dueKey);
-      } else if (card.payment_rule === 'minimum') {
-        projectedPayment = card.minimum_payment != null && card.minimum_payment !== ''
-          ? parseFloat(card.minimum_payment)
-          : Math.max(25, Math.round(remainingBalance * 0.02 * 100) / 100);
-      } else if (card.payment_rule === 'statement') {
-        projectedPayment = remainingBalance;
-      } else if (card.payment_rule === 'fixed') {
-        projectedPayment = parseFloat(card.fixed_amount) || 0;
-      }
-
-      projectedPayment = Math.min(projectedPayment, remainingBalance);
-
-      const actualPayment = completion?.actual_amount != null
-        ? parseFloat(completion.actual_amount)
-        : projectedPayment;
-
-      if (projectedPayment > 0 && dueDate <= endDate && dueDate >= startDate) {
-        events.push({
-          date: new Date(dueDate),
-          type: 'cc_payment',
-          name: `${card.name} payment`,
-          amount: actualPayment,
-          accountId: card.payment_account_id,
-          sourceId: card.id,
-          sourceType: 'cc',
-          cardId: card.id,
-          projectedAmount: projectedPayment,
-          isCompleted: !!completion,
-          completionId: completion?.id || null,
-          isEditedAmount: actualPayment !== projectedPayment,
-          occurrenceDate: dueKey,
-        });
-        remainingBalance = Math.max(0, remainingBalance - actualPayment);
-      }
-
-      cycleDate = new Date(cycleDate.getFullYear(), cycleDate.getMonth() + 1, card.cycle_day_of_month);
-    }
+    events.push(...expandCreditCardPayments(card, startDate, endDate, ccOverrides[card.id] || []));
   }
 
   // Scenario overlays
@@ -320,14 +177,12 @@ function buildEvents(data, startDate, endDate, scenarioOverlays = []) {
         name: `[Scenario] ${ov.name}`,
         amount: parseFloat(ov.amount),
         accountId: ov.account_id,
-        sourceType: 'scenario',
         isScenario: true,
-        isCompleted: false,
       });
     }
   }
 
-  // Sort: chronological, income before expenses on the same day
+  // Sort chronologically; on same day, income before expenses
   events.sort((a, b) => {
     const diff = a.date - b.date;
     if (diff !== 0) return diff;
