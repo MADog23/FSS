@@ -1,7 +1,5 @@
 // Financial Safety — Service Worker
-// Caches the app shell for offline access and faster loads.
-
-const CACHE = 'finsafety-v1';
+const CACHE = 'finsafety-v2';
 const SHELL = ['/', '/index.html'];
 
 self.addEventListener('install', e => {
@@ -19,12 +17,23 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Only intercept GET requests for same-origin navigation
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
-  // Always fetch API calls live — never serve from cache
+
+  // Never intercept API calls — always go to network
   if (url.pathname.startsWith('/api') || e.request.url.includes('railway.app')) return;
 
+  // For HTML navigation requests (page loads, reloads, direct URL entry),
+  // always serve index.html so React Router handles the route.
+  // This is the fix for white-screen on direct navigation to /household, /help, etc.
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      fetch(e.request).catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
+
+  // For other assets (JS, CSS, images), try network then cache
   e.respondWith(
     fetch(e.request)
       .then(res => {
@@ -32,6 +41,6 @@ self.addEventListener('fetch', e => {
         caches.open(CACHE).then(c => c.put(e.request, clone));
         return res;
       })
-      .catch(() => caches.match(e.request).then(r => r || caches.match('/index.html')))
+      .catch(() => caches.match(e.request))
   );
 });

@@ -139,6 +139,9 @@ export default function HouseholdPage() {
     );
   }
 
+  // Guard against user not yet loaded — prevents crash on hard reload
+  if (!user) return null;
+
   const otherMembers = members.filter(m => m.id !== user.id);
   const self = members.find(m => m.id === user.id);
 
