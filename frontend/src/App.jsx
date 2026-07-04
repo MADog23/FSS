@@ -9,7 +9,6 @@ import BillsPage from './pages/BillsPage';
 import CardsPage from './pages/CardsPage';
 import ScenarioPage from './pages/ScenarioPage';
 import HouseholdPage from './pages/HouseholdPage';
-import HelpPage from './pages/HelpPage';
 import Layout from './components/Layout';
 
 function PrivateRoute({ children }) {
@@ -39,7 +38,6 @@ export default function App() {
             <Route path="cards" element={<CardsPage />} />
             <Route path="scenario" element={<ScenarioPage />} />
             <Route path="household" element={<HouseholdPage />} />
-            <Route path="help" element={<HelpPage />} />
           </Route>
         </Routes>
       </BrowserRouter>
