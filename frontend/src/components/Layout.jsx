@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 const NAV = [
@@ -35,7 +35,7 @@ export default function Layout() {
           <div style={{ fontWeight: 500, fontSize: 15, letterSpacing: '-0.01em' }}>{household?.name || 'Household'}</div>
           <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 1 }}>Financial safety</div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{
             fontSize: 11,
             color: 'var(--color-text-muted)',
@@ -46,6 +46,26 @@ export default function Layout() {
           }}>
             {user?.role}
           </span>
+          <Link
+            to="/help"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 26,
+              height: 26,
+              borderRadius: '50%',
+              border: '0.5px solid var(--color-border-secondary)',
+              color: 'var(--color-text-muted)',
+              fontSize: 13,
+              fontWeight: 500,
+              textDecoration: 'none',
+              lineHeight: 1,
+            }}
+            title="Help & guide"
+          >
+            ?
+          </Link>
           <button onClick={handleLogout} style={{ fontSize: 12, padding: '4px 10px' }}>Sign out</button>
         </div>
       </header>
