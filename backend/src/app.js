@@ -12,6 +12,8 @@ const alertsRouter = require('./routes/alerts');
 const completionsRouter = require('./routes/completions');
 const notificationsRouter = require('./routes/notifications');
 const adminRouter = require('./routes/admin');
+const { router: adminPortalRouter } = require('./routes/adminPortal');
+const passwordResetRouter = require('./routes/passwordReset');
 const { requireAuth } = require('./middleware/auth');
 
 const app = express();
@@ -64,6 +66,7 @@ app.use(express.json());
 app.get('/health', (req, res) => res.json({ ok: true }));
 
 app.use('/auth', authLimiter, authRouter);
+app.use('/auth', authLimiter, passwordResetRouter);
 app.use('/accounts', apiLimiter, requireAuth, accountsRouter);
 app.use('/income', apiLimiter, requireAuth, incomeRouter);
 app.use('/bills', apiLimiter, requireAuth, billsRouter);
@@ -73,7 +76,8 @@ app.use('/scenarios', apiLimiter, requireAuth, scenarioRouter);
 app.use('/alerts', apiLimiter, requireAuth, alertsRouter);
 app.use('/completions', apiLimiter, requireAuth, completionsRouter);
 app.use('/notifications', apiLimiter, requireAuth, notificationsRouter);
-app.use('/admin', adminRouter); // Protected by ADMIN_SECRET, not JWT
+app.use('/admin', adminRouter);           // Original announcement-only API
+app.use('/admin', adminPortalRouter);     // Full admin portal API
 
 // 404
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));

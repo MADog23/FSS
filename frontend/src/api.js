@@ -35,7 +35,32 @@ export const api = {
   getMembers: () => request('GET', '/auth/members'),
   updateMember: (id, body) => request('PATCH', `/auth/members/${id}`, body),
   removeMember: (id) => request('DELETE', `/auth/members/${id}`),
-  completeOnboarding: () => request('POST', '/auth/complete-onboarding'),
+  forgotPassword: (email) => request('POST', '/auth/forgot-password', { email }),
+  validateResetToken: (token) => request('GET', `/auth/reset-password?token=${token}`),
+  resetPassword: (token, password) => request('POST', '/auth/reset-password', { token, password }),
+
+  // Admin portal (ADMIN_SECRET protected — used by /admin frontend only)
+  adminRequest: (method, path, body) => {
+    const secret = localStorage.getItem('adminSecret') || '';
+    return fetch(`${BASE}${path}`, {
+      method,
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${secret}` },
+      body: body ? JSON.stringify(body) : undefined,
+    }).then(async r => {
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || `Request failed: ${r.status}`);
+      return data;
+    });
+  },
+  adminGetStats: () => api.adminRequest('GET', '/admin/stats'),
+  adminGetHouseholds: (search) => api.adminRequest('GET', `/admin/households${search ? `?search=${encodeURIComponent(search)}` : ''}`),
+  adminGetHousehold: (id) => api.adminRequest('GET', `/admin/households/${id}`),
+  adminUpdateHousehold: (id, body) => api.adminRequest('PATCH', `/admin/households/${id}`, body),
+  adminClearAlerts: (id) => api.adminRequest('POST', `/admin/households/${id}/clear-alerts`),
+  adminResetUserPassword: (id, password) => api.adminRequest('POST', `/admin/users/${id}/reset-password`, { password }),
+  adminGetAnnouncements: () => api.adminRequest('GET', '/admin/announcements'),
+  adminPostAnnouncement: (body) => api.adminRequest('POST', '/admin/announcements', body),
+  adminDeleteAnnouncement: (id) => api.adminRequest('DELETE', `/admin/announcements/${id}`),
 
   // Notifications
   getNotifications: () => request('GET', '/notifications'),

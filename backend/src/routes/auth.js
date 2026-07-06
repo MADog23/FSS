@@ -54,7 +54,8 @@ router.post('/login', async (req, res) => {
 
   try {
     const { rows } = await db.query(
-      'SELECT u.*, h.name as household_name FROM users u JOIN households h ON h.id = u.household_id WHERE u.email = $1',
+      `SELECT u.*, h.name as household_name, h.is_disabled FROM users u
+       JOIN households h ON h.id = u.household_id WHERE u.email = $1`,
       [email.toLowerCase()]
     );
     const user = rows[0];
@@ -62,6 +63,10 @@ router.post('/login', async (req, res) => {
 
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
+
+    if (user.is_disabled) {
+      return res.status(403).json({ error: 'This household has been disabled. Please contact support.' });
+    }
 
     const token = signToken({ userId: user.id, householdId: user.household_id, role: user.role });
     res.json({

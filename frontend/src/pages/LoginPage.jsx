@@ -114,6 +114,10 @@ export default function LoginPage() {
         </div>
 
         <div style={{ textAlign: 'center', marginTop: 16, fontSize: 13, color: 'var(--color-text-muted)' }}>
+          <Link to="/forgot-password" style={{ color: 'var(--color-text-info)', textDecoration: 'none' }}>
+            Forgot your password?
+          </Link>
+          <span style={{ margin: '0 8px' }}>·</span>
           No household yet?{' '}
           <Link to="/register" style={{ color: 'var(--color-text-info)', textDecoration: 'none', fontWeight: 500 }}>
             Create one

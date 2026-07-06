@@ -12,13 +12,14 @@ import HouseholdPage from './pages/HouseholdPage';
 import HelpPage from './pages/HelpPage';
 import OnboardingPage from './pages/OnboardingPage';
 import NotificationsPage from './pages/NotificationsPage';
+import { ForgotPasswordPage, ResetPasswordPage } from './pages/PasswordResetPages';
+import AdminPortalPage from './pages/AdminPortalPage';
 import Layout from './components/Layout';
 
 function PrivateRoute({ children }) {
   const { user, household, loading } = useAuth();
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>;
   if (!user) return <Navigate to="/login" replace />;
-  // Redirect new households to onboarding before they see the dashboard
   if (household && household.onboardingComplete === false) {
     return <Navigate to="/onboarding" replace />;
   }
@@ -35,7 +36,6 @@ function OnboardingRoute({ children }) {
   const { user, household, loading } = useAuth();
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
-  // If already onboarded, send to dashboard
   if (household?.onboardingComplete === true) return <Navigate to="/" replace />;
   return children;
 }
@@ -45,9 +45,19 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          {/* Public routes */}
           <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
           <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+          {/* Admin portal — completely separate from household app */}
+          <Route path="/admin" element={<AdminPortalPage />} />
+
+          {/* Onboarding */}
           <Route path="/onboarding" element={<OnboardingRoute><OnboardingPage /></OnboardingRoute>} />
+
+          {/* Main app */}
           <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
             <Route index element={<DashboardPage />} />
             <Route path="accounts" element={<AccountsPage />} />
