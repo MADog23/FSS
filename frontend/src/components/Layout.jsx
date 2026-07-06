@@ -28,15 +28,7 @@ export default function Layout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Fetch unread count on mount and every 60 seconds.
-  // Reset to 0 immediately when on the notifications page.
-  // Re-fetch when navigating away from notifications so badge is accurate.
   useEffect(() => {
-    if (location.pathname === '/notifications') {
-      setUnreadCount(0);
-      return;
-    }
-    // Fetch immediately then poll
     const fetchCount = () =>
       api.getUnreadCount().then(d => setUnreadCount(d.count || 0)).catch(() => {});
     fetchCount();

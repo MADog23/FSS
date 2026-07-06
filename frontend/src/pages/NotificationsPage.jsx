@@ -41,8 +41,6 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     load();
-    // Auto mark all read when the page opens so the badge clears immediately
-    api.markAllNotificationsRead().catch(() => {});
   }, []);
 
   const markRead = async (id) => {
