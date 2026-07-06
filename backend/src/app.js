@@ -12,7 +12,6 @@ const alertsRouter = require('./routes/alerts');
 const completionsRouter = require('./routes/completions');
 const notificationsRouter = require('./routes/notifications');
 const adminRouter = require('./routes/admin');
-const { checkAndSendAlerts } = require('./services/alerts');
 const { requireAuth } = require('./middleware/auth');
 
 const app = express();
@@ -70,15 +69,6 @@ app.use('/income', apiLimiter, requireAuth, incomeRouter);
 app.use('/bills', apiLimiter, requireAuth, billsRouter);
 app.use('/cards', apiLimiter, requireAuth, cardsRouter);
 app.use('/forecast', apiLimiter, requireAuth, forecastRouter);
-
-// After every real forecast fetch (not simulate), check if alerts should fire.
-// Done async so it never delays the response.
-app.use('/forecast', (req, res, next) => {
-  if (req.method === 'GET' && req.user) {
-    checkAndSendAlerts(req.user.householdId).catch(() => {});
-  }
-  next();
-});
 app.use('/scenarios', apiLimiter, requireAuth, scenarioRouter);
 app.use('/alerts', apiLimiter, requireAuth, alertsRouter);
 app.use('/completions', apiLimiter, requireAuth, completionsRouter);

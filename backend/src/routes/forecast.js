@@ -69,6 +69,8 @@ async function loadHouseholdData(householdId) {
   };
 }
 
+const { checkAndSendAlerts } = require('../services/alerts');
+
 // GET /forecast?horizon=30
 // Runs the deterministic forecast for the household
 forecastRouter.get('/', requireAuth, async (req, res) => {
@@ -81,8 +83,7 @@ forecastRouter.get('/', requireAuth, async (req, res) => {
     const data = await loadHouseholdData(req.user.householdId);
     const result = runForecast(data, horizonDays);
 
-    // Detect account ID mismatches — events whose accountId doesn't match any account.
-    // This is the most common cause of the buffer not deducting predicted costs.
+    // Detect account ID mismatches
     const accountIds = new Set(data.accounts.map(a => a.id));
     const orphanedEvents = result.events.filter(e => e.accountId && !accountIds.has(e.accountId));
     if (orphanedEvents.length > 0) {
@@ -95,6 +96,11 @@ forecastRouter.get('/', requireAuth, async (req, res) => {
     }
 
     res.json(result);
+
+    // Fire alert check after response is sent — async, never blocks the user
+    checkAndSendAlerts(req.user.householdId).catch(err =>
+      console.error('Alert check error:', err.message)
+    );
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Forecast failed' });
