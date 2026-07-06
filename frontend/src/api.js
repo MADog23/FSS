@@ -42,6 +42,7 @@ export const api = {
   getUnreadCount: () => request('GET', '/notifications/unread-count'),
   markNotificationRead: (id) => request('PATCH', `/notifications/${id}/read`),
   markAllNotificationsRead: () => request('POST', '/notifications/read-all'),
+  deleteNotification: (id) => request('DELETE', `/notifications/${id}`),
 
   // Accounts
   getAccounts: () => request('GET', '/accounts'),

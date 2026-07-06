@@ -69,4 +69,19 @@ router.post('/read-all', requireAuth, async (req, res) => {
   }
 });
 
+// DELETE /notifications/:id — delete a notification
+router.delete('/:id', requireAuth, async (req, res) => {
+  try {
+    const { rowCount } = await db.query(
+      'DELETE FROM household_notifications WHERE id = $1 AND household_id = $2',
+      [req.params.id, req.user.householdId]
+    );
+    if (rowCount === 0) return res.status(404).json({ error: 'Notification not found' });
+    res.json({ deleted: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to delete notification' });
+  }
+});
+
 module.exports = router;

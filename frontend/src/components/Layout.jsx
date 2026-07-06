@@ -28,13 +28,20 @@ export default function Layout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Poll unread count every 60 seconds
+  // Poll unread count every 60 seconds, and reset when on the notifications page
   useEffect(() => {
-    const fetchCount = () => api.getUnreadCount().then(d => setUnreadCount(d.count || 0)).catch(() => {});
+    const fetchCount = () => {
+      // If already on notifications page, badge should be 0
+      if (location.pathname === '/notifications') {
+        setUnreadCount(0);
+        return;
+      }
+      api.getUnreadCount().then(d => setUnreadCount(d.count || 0)).catch(() => {});
+    };
     fetchCount();
     const interval = setInterval(fetchCount, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [location.pathname]);
 
   const handleLogout = () => { logout(); navigate('/login'); };
 

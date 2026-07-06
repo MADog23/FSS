@@ -39,7 +39,11 @@ export default function NotificationsPage() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    // Auto mark all read when the page opens so the badge clears immediately
+    api.markAllNotificationsRead().catch(() => {});
+  }, []);
 
   const markRead = async (id) => {
     await api.markNotificationRead(id).catch(() => {});
@@ -47,6 +51,11 @@ export default function NotificationsPage() {
       prev.map(n => n.id === id ? { ...n, read_at: new Date().toISOString() } : n)
     );
     setUnreadCount(c => Math.max(0, c - 1));
+  };
+
+  const deleteNotif = async (id) => {
+    await api.deleteNotification(id).catch(() => {});
+    setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
   const markAll = async () => {
@@ -171,6 +180,12 @@ export default function NotificationsPage() {
                 {isUnread && (
                   <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>· tap to mark read</span>
                 )}
+                <button
+                  onClick={e => { e.stopPropagation(); deleteNotif(n.id); }}
+                  style={{ marginLeft: 'auto', fontSize: 11, padding: '2px 8px', color: 'var(--color-text-muted)', borderColor: 'var(--color-border-tertiary)' }}
+                >
+                  Delete
+                </button>
               </div>
             </div>
           </div>
