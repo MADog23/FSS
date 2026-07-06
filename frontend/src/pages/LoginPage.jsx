@@ -90,18 +90,23 @@ export default function LoginPage() {
               />
             </div>
             <div>
-              <label style={{ fontSize: 12, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
-                Password
-              </label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
-                autoComplete="current-password"
-              />
+            <label style={{ fontSize: 12, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
+              Password
+            </label>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="••••••••"
+              autoComplete="current-password"
+            />
+            <div style={{ textAlign: 'right', marginTop: 5 }}>
+              <Link to="/forgot-password" style={{ fontSize: 12, color: 'var(--color-text-secondary)', textDecoration: 'underline' }}>
+                Forgot password?
+              </Link>
             </div>
+          </div>
             <button
               type="submit"
               className="primary"
