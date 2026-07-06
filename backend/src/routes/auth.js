@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const db = require('../db');
-const { signToken, requireAuth } = require('../middleware/auth');
+const { signToken, requireAuth, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 const SALT_ROUNDS = 12;
