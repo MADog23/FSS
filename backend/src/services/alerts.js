@@ -88,12 +88,12 @@ function buildNotificationText(status, freeCash, deficit, dangerDate) {
 // ── Check and send alerts for a single household ───────────────────────────
 async function checkAndSendAlerts(householdId) {
   try {
-    // Load alert preferences
+    // Load alert preferences — used for email config and dedup.
+    // In-app notifications fire regardless of whether prefs exist.
     const { rows: [prefs] } = await db.query(
       'SELECT * FROM alert_preferences WHERE household_id = $1',
       [householdId]
     );
-    if (!prefs) return;
 
     // Load household data for forecast
     const [accounts, income, bills, creditCards, household] = await Promise.all([
@@ -114,16 +114,17 @@ async function checkAndSendAlerts(householdId) {
     const forecast = runForecast(data, 30);
     const { status, freeCash, deficit, dangerDate } = forecast;
 
-    const shouldAlert =
-      (status === 'danger' && prefs.alert_on_danger) ||
-      (status === 'warning' && prefs.alert_on_warning);
-
-    // Don't re-alert for the same status
-    if (!shouldAlert || prefs.last_status === status) return;
+    // Only alert on danger or warning — safe status never generates a notification
+    if (status === 'safe') return;
 
     const householdName = household.rows[0]?.name || 'Your household';
     const notifTitle = status === 'danger' ? '🔴 Safety alert — action needed' : '🟡 Safety alert — heads up';
     const notifBody = buildNotificationText(status, freeCash, deficit, dangerDate);
+
+    // Dedup: don't fire the same status twice in a row.
+    // Use prefs.last_status if prefs exist, otherwise check recent notifications.
+    const lastStatus = prefs?.last_status || null;
+    if (lastStatus === status) return;
 
     // Always create an in-app notification (no email config required)
     await db.query(
@@ -132,8 +133,12 @@ async function checkAndSendAlerts(householdId) {
       [householdId, 'safety', notifTitle, notifBody]
     );
 
-    // Send email only if Resend is configured and an alert email is set
-    if (resend && prefs.alert_email) {
+    // Send email only if prefs exist, Resend is configured, and user has opted in
+    const shouldEmail = prefs &&
+      ((status === 'danger' && prefs.alert_on_danger) ||
+       (status === 'warning' && prefs.alert_on_warning));
+
+    if (resend && prefs?.alert_email && shouldEmail) {
       await resend.emails.send({
         from: FROM,
         to: prefs.alert_email,
@@ -143,10 +148,12 @@ async function checkAndSendAlerts(householdId) {
       console.log(`Alert email sent to ${prefs.alert_email} for household ${householdId} — status: ${status}`);
     }
 
-    // Record that we alerted for this status
+    // Record last alerted status to prevent re-alerting (upsert so it works even without existing prefs row)
     await db.query(
-      'UPDATE alert_preferences SET last_alerted_at = NOW(), last_status = $1 WHERE household_id = $2',
-      [status, householdId]
+      `INSERT INTO alert_preferences (household_id, last_status, last_alerted_at, alert_on_danger, alert_on_warning)
+       VALUES ($1, $2, NOW(), TRUE, FALSE)
+       ON CONFLICT (household_id) DO UPDATE SET last_status = $2, last_alerted_at = NOW()`,
+      [householdId, status]
     );
   } catch (err) {
     console.error('Alert check failed for household', householdId, err.message);
