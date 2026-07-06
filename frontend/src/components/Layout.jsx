@@ -32,7 +32,7 @@ export default function Layout() {
     const fetchCount = () =>
       api.getUnreadCount().then(d => setUnreadCount(d.count || 0)).catch(() => {});
     fetchCount();
-    const interval = setInterval(fetchCount, 60000);
+    const interval = setInterval(fetchCount, 15000);
     return () => clearInterval(interval);
   }, [location.pathname]);
 
