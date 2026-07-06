@@ -35,6 +35,13 @@ export const api = {
   getMembers: () => request('GET', '/auth/members'),
   updateMember: (id, body) => request('PATCH', `/auth/members/${id}`, body),
   removeMember: (id) => request('DELETE', `/auth/members/${id}`),
+  completeOnboarding: () => request('POST', '/auth/complete-onboarding'),
+
+  // Notifications
+  getNotifications: () => request('GET', '/notifications'),
+  getUnreadCount: () => request('GET', '/notifications/unread-count'),
+  markNotificationRead: (id) => request('PATCH', `/notifications/${id}/read`),
+  markAllNotificationsRead: () => request('POST', '/notifications/read-all'),
 
   // Accounts
   getAccounts: () => request('GET', '/accounts'),

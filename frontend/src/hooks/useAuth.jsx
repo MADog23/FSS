@@ -14,7 +14,7 @@ export function AuthProvider({ children }) {
     api.me()
       .then(data => {
         setUser({ id: data.id, email: data.email, role: data.role });
-        setHousehold({ id: data.household_id, name: data.household_name });
+        setHousehold({ id: data.household_id, name: data.household_name, onboardingComplete: data.onboarding_complete });
       })
       .catch(() => localStorage.removeItem('token'))
       .finally(() => setLoading(false));
@@ -24,14 +24,20 @@ export function AuthProvider({ children }) {
     const data = await api.login({ email, password });
     localStorage.setItem('token', data.token);
     setUser(data.user);
-    setHousehold(data.household);
+    setHousehold({ ...data.household, onboardingComplete: data.onboarding_complete });
   };
 
   const register = async (householdName, email, password) => {
     const data = await api.register({ householdName, email, password });
     localStorage.setItem('token', data.token);
     setUser(data.user);
-    setHousehold(data.household);
+    // New registrations always start onboarding
+    setHousehold({ ...data.household, onboardingComplete: false });
+  };
+
+  const completeOnboarding = async () => {
+    await api.completeOnboarding();
+    setHousehold(h => ({ ...h, onboardingComplete: true }));
   };
 
   const logout = () => {
@@ -41,7 +47,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, household, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, household, loading, login, register, logout, completeOnboarding }}>
       {children}
     </AuthContext.Provider>
   );

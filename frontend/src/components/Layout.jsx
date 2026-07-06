@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { api } from '../api';
 
 // Primary nav — always visible on bottom bar, sized properly for mobile
 const PRIMARY_NAV = [
@@ -25,6 +26,15 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Poll unread count every 60 seconds
+  useEffect(() => {
+    const fetchCount = () => api.getUnreadCount().then(d => setUnreadCount(d.count || 0)).catch(() => {});
+    fetchCount();
+    const interval = setInterval(fetchCount, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogout = () => { logout(); navigate('/login'); };
 
@@ -56,6 +66,14 @@ export default function Layout() {
           <span style={{ fontSize: 11, color: 'var(--color-text-muted)', background: 'var(--color-background-secondary)', padding: '2px 8px', borderRadius: 8, border: '0.5px solid var(--color-border-tertiary)' }}>
             {user?.role}
           </span>
+          <Link to="/notifications" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', border: '0.5px solid var(--color-border-secondary)', color: 'var(--color-text-muted)', fontSize: 15, textDecoration: 'none' }} title="Notifications">
+            🔔
+            {unreadCount > 0 && (
+              <span style={{ position: 'absolute', top: -3, right: -3, background: 'var(--color-text-danger)', color: '#fff', fontSize: 9, fontWeight: 700, width: 16, height: 16, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </Link>
           <Link to="/help" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: '50%', border: '0.5px solid var(--color-border-secondary)', color: 'var(--color-text-muted)', fontSize: 13, fontWeight: 500, textDecoration: 'none', lineHeight: 1 }} title="Help & guide">?</Link>
           <button onClick={handleLogout} style={{ fontSize: 12, padding: '4px 10px' }}>Sign out</button>
         </div>

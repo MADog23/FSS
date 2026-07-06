@@ -10,6 +10,8 @@ const { incomeRouter, billsRouter, cardsRouter } = require('./routes/financial')
 const { forecastRouter, scenarioRouter } = require('./routes/forecast');
 const alertsRouter = require('./routes/alerts');
 const completionsRouter = require('./routes/completions');
+const notificationsRouter = require('./routes/notifications');
+const adminRouter = require('./routes/admin');
 const { checkAndSendAlerts } = require('./services/alerts');
 const { requireAuth } = require('./middleware/auth');
 
@@ -80,6 +82,8 @@ app.use('/forecast', (req, res, next) => {
 app.use('/scenarios', apiLimiter, requireAuth, scenarioRouter);
 app.use('/alerts', apiLimiter, requireAuth, alertsRouter);
 app.use('/completions', apiLimiter, requireAuth, completionsRouter);
+app.use('/notifications', apiLimiter, requireAuth, notificationsRouter);
+app.use('/admin', adminRouter); // Protected by ADMIN_SECRET, not JWT
 
 // 404
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));

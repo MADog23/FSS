@@ -79,7 +79,9 @@ router.post('/login', async (req, res) => {
 router.get('/me', requireAuth, async (req, res) => {
   try {
     const { rows } = await db.query(
-      'SELECT u.id, u.email, u.role, h.id as household_id, h.name as household_name FROM users u JOIN households h ON h.id = u.household_id WHERE u.id = $1',
+      `SELECT u.id, u.email, u.role, h.id as household_id, h.name as household_name,
+              h.onboarding_complete
+       FROM users u JOIN households h ON h.id = u.household_id WHERE u.id = $1`,
       [req.user.userId]
     );
     if (!rows[0]) return res.status(404).json({ error: 'User not found' });
@@ -87,6 +89,20 @@ router.get('/me', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch user' });
+  }
+});
+
+// POST /auth/complete-onboarding — mark onboarding done for this household
+router.post('/complete-onboarding', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    await db.query(
+      'UPDATE households SET onboarding_complete = TRUE WHERE id = $1',
+      [req.user.householdId]
+    );
+    res.json({ onboarding_complete: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to complete onboarding' });
   }
 });
 
