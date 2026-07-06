@@ -114,8 +114,16 @@ async function checkAndSendAlerts(householdId) {
     const forecast = runForecast(data, 30);
     const { status, freeCash, deficit, dangerDate } = forecast;
 
-    // Only alert on danger or warning — safe status never generates a notification
-    if (status === 'safe') return;
+    // If status is safe, clear last_status so the next danger/warning fires fresh
+    if (status === 'safe') {
+      if (prefs) {
+        await db.query(
+          'UPDATE alert_preferences SET last_status = NULL WHERE household_id = $1 AND last_status IS NOT NULL',
+          [householdId]
+        );
+      }
+      return;
+    }
 
     const householdName = household.rows[0]?.name || 'Your household';
     const notifTitle = status === 'danger' ? '🔴 Safety alert — action needed' : '🟡 Safety alert — heads up';
